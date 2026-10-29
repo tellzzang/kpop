@@ -1,0 +1,1318 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>2026 운양고 동아리 발표회 심사위원 전용 실시간 채점 시스템</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@500;600;700;800;900&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+  <style>
+    * {
+      font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+      word-break: keep-all;
+    }
+    body {
+      background: linear-gradient(135deg, #fffbeb 0%, #fff1f2 35%, #f0fdf4 70%, #eff6ff 100%);
+      color: #0f172a;
+      min-height: 100vh;
+    }
+    .bright-card {
+      background: #ffffff;
+      border: 2px solid #e2e8f0;
+      box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.06), 0 8px 10px -6px rgba(15, 23, 42, 0.04);
+    }
+    .bright-card-active {
+      background: #ffffff;
+      border: 3px solid #ec4899;
+      box-shadow: 0 12px 28px -5px rgba(236, 72, 153, 0.18);
+    }
+    .press-btn {
+      transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .press-btn:active {
+      transform: scale(0.95);
+    }
+    input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      height: 14px;
+      border-radius: 999px;
+      background: #e2e8f0;
+      outline: none;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      background: #ec4899;
+      border: 4px solid #ffffff;
+      box-shadow: 0 4px 10px rgba(236, 72, 153, 0.4);
+      cursor: pointer;
+    }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  </style>
+</head>
+<body class="pb-28">
+
+  <!-- 상단 고정 밝고 큼지막한 헤더 -->
+  <header class="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b-2 border-pink-200 shadow-sm">
+    <div class="max-w-6xl mx-auto px-4 py-3.5 flex flex-wrap items-center justify-between gap-2">
+      <div class="flex items-center gap-3">
+        <span class="text-3xl sm:text-4xl">🏆</span>
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="px-2.5 py-0.5 rounded-full text-xs sm:text-sm font-black bg-pink-600 text-white">kpop.tellzzang.com</span>
+            <span id="syncBadge" class="px-2.5 py-0.5 rounded-full text-xs sm:text-sm font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-300">🟢 실시간 수합 대기</span>
+          </div>
+          <h1 class="text-xl sm:text-2xl md:text-3xl font-black text-slate-900 tracking-tight mt-0.5">
+            2026 운양고 동아리 발표회 심사위원 실시간 채점 시스템
+          </h1>
+        </div>
+      </div>
+
+      <!-- 현재 로그인된 심사위원 표시 및 변경 버튼 -->
+      <div class="flex items-center gap-2">
+        <button onclick="openJudgeModal()" class="press-btn flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-amber-100 hover:bg-amber-200 border-2 border-amber-400 text-slate-900 font-black text-base sm:text-lg shadow-sm">
+          <span>⭐ 심사위원:</span>
+          <span id="currentJudgeLabel" class="text-pink-700 underline">선택하기</span>
+        </button>
+        <button onclick="openConfigModal()" title="구글 시트 연동 설정" class="press-btn p-2.5 rounded-2xl bg-slate-100 hover:bg-slate-200 border-2 border-slate-300 text-slate-700 text-xl font-bold">
+          ⚙️
+        </button>
+      </div>
+    </div>
+
+    <!-- 큼직한 3대 메인 탭 스위처 -->
+    <div class="max-w-6xl mx-auto px-4 pb-3">
+      <div class="grid grid-cols-3 gap-2 p-1.5 rounded-2xl bg-slate-100 border-2 border-slate-200">
+        <button onclick="switchTab('judge')" id="tab-judge" class="press-btn py-3 rounded-xl text-base sm:text-xl font-black transition bg-gradient-to-r from-pink-600 to-rose-500 text-white shadow-md">
+          📝 1. 동아리 채점하기
+        </button>
+        <button onclick="switchTab('matrix')" id="tab-matrix" class="press-btn py-3 rounded-xl text-base sm:text-xl font-extrabold transition text-slate-700 hover:bg-white">
+          🔍 2. 누가 어디 채점했나? (현황표)
+        </button>
+        <button onclick="switchTab('rank')" id="tab-rank" class="press-btn py-3 rounded-xl text-base sm:text-xl font-extrabold transition text-slate-700 hover:bg-white">
+          👑 3. 실시간 1·2·3등 순위
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- 메인 컨테이너 -->
+  <main class="max-w-6xl mx-auto px-4 pt-5">
+
+    <!-- ==================== [탭 1] 동아리 채점하기 ==================== -->
+    <section id="section-judge" class="space-y-5">
+
+      <!-- 내 채점 진행률 배너 -->
+      <div class="bright-card rounded-3xl p-5 bg-gradient-to-r from-white via-pink-50/40 to-amber-50/50 border-2 border-pink-200">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <div class="text-base sm:text-lg font-extrabold text-pink-700 flex items-center gap-1.5">
+              <span>⭐ 공식 심사위원단 7인 전용 모드</span>
+            </div>
+            <h2 id="judgeWelcomeText" class="text-xl sm:text-2xl font-black text-slate-900 mt-1">
+              선생님 성함을 먼저 선택한 뒤, 배정 부스를 터치하여 채점해 주세요!
+            </h2>
+          </div>
+          <div class="flex items-center gap-3 shrink-0">
+            <div class="px-4 py-2.5 rounded-2xl bg-white border-2 border-pink-300 text-center">
+              <div class="text-xs sm:text-sm font-bold text-slate-500">내 채점 완료</div>
+              <div class="text-xl sm:text-2xl font-black text-pink-600"><span id="myScoredCount">0</span> / 38개</div>
+            </div>
+            <button onclick="syncFromCloud(true)" class="press-btn px-4 py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-black text-base sm:text-lg shadow">
+              🔄 최신 동기화
+            </button>
+          </div>
+        </div>
+
+        <div class="w-full h-4 bg-slate-200 rounded-full overflow-hidden mt-3 border border-slate-300">
+          <div id="myProgressBar" class="h-full bg-gradient-to-r from-pink-500 via-rose-500 to-amber-500 transition-all duration-300" style="width: 0%"></div>
+        </div>
+      </div>
+
+      <!-- 층별/상태별 필터 & 검색 -->
+      <div class="bright-card rounded-3xl p-4 sm:p-5 space-y-3.5">
+        <div class="flex flex-col sm:flex-row gap-3">
+          <div class="relative flex-1">
+            <input
+              id="clubSearchInput"
+              type="text"
+              oninput="renderClubGrid()"
+              placeholder="🔍 동아리 이름, 배정 교실(물리실, 2-4), 지도교사 검색..."
+              class="w-full pl-4 pr-10 py-3.5 rounded-2xl bg-slate-50 border-2 border-slate-300 text-lg sm:text-xl font-bold text-slate-900 placeholder-slate-400 focus:outline-none focus:border-pink-500 focus:bg-white"
+            />
+            <button onclick="clearClubSearch()" class="absolute right-3.5 top-3.5 text-xl font-bold text-slate-400 hover:text-slate-700">✕</button>
+          </div>
+          <div class="flex gap-2">
+            <button onclick="setStatusFilter('all')" id="statusBtn-all" class="press-btn px-4 py-3 rounded-2xl text-base sm:text-lg font-black bg-slate-900 text-white">전체(38)</button>
+            <button onclick="setStatusFilter('unscored')" id="statusBtn-unscored" class="press-btn px-4 py-3 rounded-2xl text-base sm:text-lg font-extrabold bg-slate-100 text-slate-700 border-2 border-slate-300">⚪ 미채점</button>
+            <button onclick="setStatusFilter('scored')" id="statusBtn-scored" class="press-btn px-4 py-3 rounded-2xl text-base sm:text-lg font-extrabold bg-slate-100 text-slate-700 border-2 border-slate-300">✅ 채점완료</button>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-3 sm:grid-cols-6 gap-2">
+          <button onclick="setFloorFilter('all')" id="floorBtn-all" class="press-btn py-3 rounded-2xl text-base sm:text-lg font-black bg-pink-600 text-white shadow">🏢 전 층 보기</button>
+          <button onclick="setFloorFilter(1)" id="floorBtn-1" class="press-btn py-3 rounded-2xl text-base sm:text-lg font-extrabold bg-white text-slate-800 border-2 border-slate-300">1층 (2개)</button>
+          <button onclick="setFloorFilter(2)" id="floorBtn-2" class="press-btn py-3 rounded-2xl text-base sm:text-lg font-extrabold bg-white text-slate-800 border-2 border-slate-300">2층 (4개)</button>
+          <button onclick="setFloorFilter(3)" id="floorBtn-3" class="press-btn py-3 rounded-2xl text-base sm:text-lg font-extrabold bg-white text-slate-800 border-2 border-slate-300">3층·강당 (12개)</button>
+          <button onclick="setFloorFilter(4)" id="floorBtn-4" class="press-btn py-3 rounded-2xl text-base sm:text-lg font-extrabold bg-white text-slate-800 border-2 border-slate-300">4층 (9개)</button>
+          <button onclick="setFloorFilter(5)" id="floorBtn-5" class="press-btn py-3 rounded-2xl text-base sm:text-lg font-extrabold bg-white text-slate-800 border-2 border-slate-300">5층 (11개)</button>
+        </div>
+      </div>
+
+      <!-- 동아리 카드 그리드 -->
+      <div id="clubGridContainer" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- JS로 렌더링 -->
+      </div>
+    </section>
+
+
+    <!-- ==================== [탭 2] 누가 어디를 채점했는지 실시간 매트릭스 현황표 ==================== -->
+    <section id="section-matrix" class="hidden space-y-6">
+
+      <!-- 7인 심사위원별 채점 통계 요약 카드 -->
+      <div class="bright-card rounded-3xl p-5 sm:p-6 bg-gradient-to-r from-amber-50 via-white to-pink-50 border-2 border-amber-300">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+          <div>
+            <span class="px-3 py-1 rounded-full text-sm font-black bg-amber-500 text-slate-950">심사위원별 진행 현황</span>
+            <h2 class="text-2xl sm:text-3xl font-black text-slate-900 mt-1.5">
+              7인 심사위원 채점 진행 현황 및 평균 점수 편차
+            </h2>
+          </div>
+          <div class="text-base sm:text-lg font-black text-pink-600 bg-white px-4 py-2 rounded-2xl border-2 border-pink-200">
+            총 채점 제출: <span id="matrixTotalCount">0</span>건
+          </div>
+        </div>
+
+        <div id="judgeSummaryCards" class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-2.5">
+          <!-- JS로 7인 요약 카드 렌더링 -->
+        </div>
+      </div>
+
+      <!-- 동아리별 7인 심사위원 채점 매트릭스 표 (누가 채점했는지 한눈에!) -->
+      <div class="bright-card rounded-3xl p-5 sm:p-6 space-y-4">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h3 class="text-xl sm:text-2xl font-black text-slate-900">🔍 동아리별 7인 심사위원 실시간 채점 매트릭스</h3>
+            <p class="text-base font-bold text-slate-500 mt-0.5">각 심사위원이 채점한 점수가 실시간으로 표시되며, 클릭하면 세부 채점 내역을 볼 수 있습니다.</p>
+          </div>
+          <button onclick="copyMatrixTableForHwp()" class="press-btn px-4 py-2.5 rounded-2xl bg-slate-900 text-white font-black text-base sm:text-lg shadow">
+            📋 매트릭스 표 복사 (한글·노션 붙여넣기)
+          </button>
+        </div>
+
+        <div class="overflow-x-auto rounded-2xl border-2 border-slate-300">
+          <table id="matrixHtmlTable" border="1" style="border-collapse: collapse; border: 1.5px solid #333; width: 100%;" class="w-full text-left bg-white">
+            <thead>
+              <tr class="bg-slate-900 text-white text-base sm:text-lg font-black">
+                <th style="border: 1px solid #333; padding: 10px; text-align: center; width: 60px;">번호</th>
+                <th style="border: 1px solid #333; padding: 10px; width: 180px;">동아리명</th>
+                <th style="border: 1px solid #333; padding: 10px; text-align: center; width: 110px;">장소(층)</th>
+                <th style="border: 1px solid #333; padding: 10px; text-align: center;">민선기</th>
+                <th style="border: 1px solid #333; padding: 10px; text-align: center;">백윤숙</th>
+                <th style="border: 1px solid #333; padding: 10px; text-align: center;">손현자</th>
+                <th style="border: 1px solid #333; padding: 10px; text-align: center;">유보경</th>
+                <th style="border: 1px solid #333; padding: 10px; text-align: center;">류재권</th>
+                <th style="border: 1px solid #333; padding: 10px; text-align: center;">신성철</th>
+                <th style="border: 1px solid #333; padding: 10px; text-align: center;">조호묵</th>
+                <th style="border: 1px solid #333; padding: 10px; text-align: center; width: 90px;">채점수</th>
+                <th style="border: 1px solid #333; padding: 10px; text-align: center; width: 100px;">평균점수</th>
+              </tr>
+            </thead>
+            <tbody id="matrixTableBody" class="text-base sm:text-lg font-bold text-slate-900">
+              <!-- JS로 38개 동아리 x 7인 렌더링 -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </section>
+
+
+    <!-- ==================== [탭 3] 실시간 1·2·3등 순위 대시보드 ==================== -->
+    <section id="section-rank" class="hidden space-y-6">
+
+      <!-- 시상식 보드 -->
+      <div class="bright-card rounded-3xl p-5 sm:p-6 bg-gradient-to-br from-amber-50 via-white to-pink-50 border-2 border-amber-300">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
+          <h2 class="text-2xl sm:text-3xl font-black text-slate-900 flex items-center gap-2">
+            <span>👑 실시간 수상 예정 보드 (최우수 1 · 우수 3 · 장려 5)</span>
+          </h2>
+          <div class="flex gap-2">
+            <button onclick="exportRankingCSV()" class="press-btn px-4 py-2.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-base sm:text-lg shadow">
+              📥 엑셀(CSV) 다운로드
+            </button>
+            <button onclick="copyRankingTableForHwp()" class="press-btn px-4 py-2.5 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white font-black text-base sm:text-lg shadow">
+              📋 순위표 복사 (한글·노션용)
+            </button>
+          </div>
+        </div>
+
+        <div id="podiumContainer" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <!-- 1, 2, 3위 포디움 카드 -->
+        </div>
+      </div>
+
+      <!-- 전체 38개 순위표 -->
+      <div class="bright-card rounded-3xl p-5 sm:p-6 space-y-4">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <h3 class="text-xl sm:text-2xl font-black text-slate-900">📊 전 부서 실시간 순위 집계표 (1위 ~ 38위)</h3>
+          <div class="flex flex-wrap gap-2">
+            <button onclick="setRankSort('avg')" id="sortBtn-avg" class="press-btn px-4 py-2 rounded-xl text-base font-black bg-pink-600 text-white">평균 총점순</button>
+            <button onclick="setRankSort('sum')" id="sortBtn-sum" class="press-btn px-4 py-2 rounded-xl text-base font-bold bg-slate-100 text-slate-700 border border-slate-300">누적 합계순</button>
+            <button onclick="setRankSort('clean')" id="sortBtn-clean" class="press-btn px-4 py-2 rounded-xl text-base font-bold bg-slate-100 text-slate-700 border border-slate-300">청소·복구(35점)순</button>
+          </div>
+        </div>
+
+        <div class="overflow-x-auto rounded-2xl border-2 border-slate-300">
+          <table id="rankingHtmlTable" border="1" style="border-collapse: collapse; border: 1.5px solid #333; width: 100%;" class="w-full text-left bg-white">
+            <thead>
+              <tr class="bg-slate-900 text-white text-base sm:text-lg font-black">
+                <th style="border: 1px solid #333; padding: 12px; text-align: center;">순위</th>
+                <th style="border: 1px solid #333; padding: 12px; text-align: center;">예정 훈격</th>
+                <th style="border: 1px solid #333; padding: 12px;">동아리명</th>
+                <th style="border: 1px solid #333; padding: 12px; text-align: center;">장소(층)</th>
+                <th style="border: 1px solid #333; padding: 12px; text-align: center;">채점위원수</th>
+                <th style="border: 1px solid #333; padding: 12px; text-align: center;">평균 총점</th>
+                <th style="border: 1px solid #333; padding: 12px; text-align: center;">누적 합계</th>
+                <th style="border: 1px solid #333; padding: 12px; text-align: center;">교육가치(25)</th>
+                <th style="border: 1px solid #333; padding: 12px; text-align: center;">부스운영(25)</th>
+                <th style="border: 1px solid #333; padding: 12px; text-align: center;">안전질서(15)</th>
+                <th style="border: 1px solid #333; padding: 12px; text-align: center;">청소복구(35)</th>
+              </tr>
+            </thead>
+            <tbody id="rankingTableBody" class="text-base sm:text-lg font-bold text-slate-900">
+              <!-- JS로 렌더링 -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </section>
+
+  </main>
+
+
+  <!-- ==================== [모달 1] 7인 심사위원 선택 모달 ==================== -->
+  <div id="judgeModal" onclick="if(event.target===this) closeJudgeModal()" class="fixed inset-0 z-50 hidden bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white w-full max-w-xl rounded-3xl p-6 sm:p-8 shadow-2xl border-4 border-pink-400 max-h-[90vh] flex flex-col">
+      <div class="flex items-center justify-between pb-3 border-b-2 border-slate-200">
+        <div>
+          <span class="px-3 py-1 rounded-full text-sm font-black bg-pink-100 text-pink-700">2026 동아리 발표회 심사위원단</span>
+          <h3 class="text-2xl sm:text-3xl font-black text-slate-900 mt-1">⭐ 심사위원 선생님을 선택해 주세요</h3>
+        </div>
+        <button onclick="closeJudgeModal()" class="w-11 h-11 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-2xl font-black">✕</button>
+      </div>
+
+      <p class="text-base font-bold text-slate-500 my-3">
+        본인의 성함을 터치하시면 해당 심사위원의 채점 화면으로 즉시 전환됩니다.
+      </p>
+
+      <div id="judgeModalGrid" class="grid grid-cols-2 sm:grid-cols-3 gap-3 overflow-y-auto py-2 flex-1">
+        <!-- JS로 7인 렌더링 -->
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ==================== [모달 2] 동아리 채점 입력 모달 ==================== -->
+  <div id="scoreModal" onclick="if(event.target===this) closeScoreModal()" class="fixed inset-0 z-50 hidden bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4">
+    <div class="bg-white w-full max-w-2xl rounded-t-3xl sm:rounded-3xl p-5 sm:p-7 shadow-2xl border-t-4 sm:border-4 border-pink-500 max-h-[94vh] overflow-y-auto">
+      
+      <div class="flex items-start justify-between pb-4 border-b-2 border-slate-200">
+        <div>
+          <div class="flex flex-wrap items-center gap-2">
+            <span id="modalClubBadge" class="px-3 py-1 rounded-full text-base font-black bg-indigo-100 text-indigo-800">📍 교실</span>
+            <span id="modalClubField" class="px-3 py-1 rounded-full text-base font-bold bg-slate-100 text-slate-700">분야</span>
+          </div>
+          <h3 id="modalClubTitle" class="text-2xl sm:text-4xl font-black text-slate-900 mt-1.5">동아리명</h3>
+          <p id="modalClubSub" class="text-base sm:text-lg font-bold text-slate-500 mt-0.5">지도교사:</p>
+        </div>
+        <button onclick="closeScoreModal()" class="w-12 h-12 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-2xl font-black shrink-0">✕</button>
+      </div>
+
+      <!-- 프리셋 -->
+      <div class="my-4 p-3.5 rounded-2xl bg-amber-50 border-2 border-amber-200 flex flex-wrap items-center justify-between gap-2">
+        <span class="text-base sm:text-lg font-black text-amber-900">⚡ 원터치 빠른 등급:</span>
+        <div class="flex flex-wrap gap-1.5">
+          <button onclick="applyPreset(25,25,15,35)" class="press-btn px-3.5 py-2 rounded-xl bg-pink-600 text-white font-black text-base shadow-sm">최고(100점)</button>
+          <button onclick="applyPreset(23,23,14,32)" class="press-btn px-3.5 py-2 rounded-xl bg-indigo-600 text-white font-black text-base shadow-sm">우수(92점)</button>
+          <button onclick="applyPreset(20,20,12,28)" class="press-btn px-3.5 py-2 rounded-xl bg-emerald-600 text-white font-black text-base shadow-sm">보통(80점)</button>
+          <button onclick="applyPreset(18,18,10,24)" class="press-btn px-3.5 py-2 rounded-xl bg-slate-600 text-white font-black text-base shadow-sm">미흡(70점)</button>
+        </div>
+      </div>
+
+      <!-- 4대 평가 항목 -->
+      <div class="space-y-4">
+        <!-- 1. 교육적 가치 (25) -->
+        <div class="p-4 rounded-2xl bg-slate-50 border-2 border-slate-200">
+          <div class="flex items-center justify-between mb-2">
+            <div>
+              <span class="text-lg sm:text-xl font-black text-slate-900">1. 교육적 가치 및 특색</span>
+              <p class="text-sm sm:text-base font-semibold text-slate-500">연간 탐구 성과 및 학술·진로 적합성</p>
+            </div>
+            <div class="text-2xl sm:text-3xl font-black text-pink-600"><span id="val-s1">25</span> <span class="text-base text-slate-400">/ 25점</span></div>
+          </div>
+          <div class="grid grid-cols-5 gap-2 mt-2">
+            <button onclick="setItemScore(1, 25)" class="s1-btn press-btn py-3 rounded-xl font-black text-base sm:text-lg border-2">매우우수(25)</button>
+            <button onclick="setItemScore(1, 23)" class="s1-btn press-btn py-3 rounded-xl font-black text-base sm:text-lg border-2">우수(23)</button>
+            <button onclick="setItemScore(1, 20)" class="s1-btn press-btn py-3 rounded-xl font-black text-base sm:text-lg border-2">보통(20)</button>
+            <button onclick="setItemScore(1, 17)" class="s1-btn press-btn py-3 rounded-xl font-black text-base sm:text-lg border-2">노력요함(17)</button>
+            <button onclick="setItemScore(1, 15)" class="s1-btn press-btn py-3 rounded-xl font-black text-base sm:text-lg border-2">미흡(15)</button>
+          </div>
+          <input id="range-s1" type="range" min="0" max="25" step="1" value="25" oninput="setItemScore(1, this.value)" class="w-full mt-3" />
+        </div>
+
+        <!-- 2. 부스 운영 및 참여도 (25) -->
+        <div class="p-4 rounded-2xl bg-slate-50 border-2 border-slate-200">
+          <div class="flex items-center justify-between mb-2">
+            <div>
+              <span class="text-lg sm:text-xl font-black text-slate-900">2. 부스 운영 및 참여도</span>
+              <p class="text-sm sm:text-base font-semibold text-slate-500">A·B팀 역할 분담 성실성 및 친절한 설명</p>
+            </div>
+            <div class="text-2xl sm:text-3xl font-black text-pink-600"><span id="val-s2">25</span> <span class="text-base text-slate-400">/ 25점</span></div>
+          </div>
+          <div class="grid grid-cols-5 gap-2 mt-2">
+            <button onclick="setItemScore(2, 25)" class="s2-btn press-btn py-3 rounded-xl font-black text-base sm:text-lg border-2">매우우수(25)</button>
+            <button onclick="setItemScore(2, 23)" class="s2-btn press-btn py-3 rounded-xl font-black text-base sm:text-lg border-2">우수(23)</button>
+            <button onclick="setItemScore(2, 20)" class="s2-btn press-btn py-3 rounded-xl font-black text-base sm:text-lg border-2">보통(20)</button>
+            <button onclick="setItemScore(2, 17)" class="s2-btn press-btn py-3 rounded-xl font-black text-base sm:text-lg border-2">노력요함(17)</button>
+            <button onclick="setItemScore(2, 15)" class="s2-btn press-btn py-3 rounded-xl font-black text-base sm:text-lg border-2">미흡(15)</button>
+          </div>
+          <input id="range-s2" type="range" min="0" max="25" step="1" value="25" oninput="setItemScore(2, this.value)" class="w-full mt-3" />
+        </div>
+
+        <!-- 3. 안전 및 질서 (15) -->
+        <div class="p-4 rounded-2xl bg-slate-50 border-2 border-slate-200">
+          <div class="flex items-center justify-between mb-2">
+            <div>
+              <span class="text-lg sm:text-xl font-black text-slate-900">3. 안전 및 질서 준수</span>
+              <p class="text-sm sm:text-base font-semibold text-slate-500">화기·조리 금지, 암전 금지, 복도 통로 질서</p>
+            </div>
+            <div class="text-2xl sm:text-3xl font-black text-pink-600"><span id="val-s3">15</span> <span class="text-base text-slate-400">/ 15점</span></div>
+          </div>
+          <div class="grid grid-cols-5 gap-2 mt-2">
+            <button onclick="setItemScore(3, 15)" class="s3-btn press-btn py-3 rounded-xl font-black text-base sm:text-lg border-2">매우우수(15)</button>
+            <button onclick="setItemScore(3, 13)" class="s3-btn press-btn py-3 rounded-xl font-black text-base sm:text-lg border-2">우수(13)</button>
+            <button onclick="setItemScore(3, 11)" class="s3-btn press-btn py-3 rounded-xl font-black text-base sm:text-lg border-2">보통(11)</button>
+            <button onclick="setItemScore(3, 9)" class="s3-btn press-btn py-3 rounded-xl font-black text-base sm:text-lg border-2">노력요함(9)</button>
+            <button onclick="setItemScore(3, 0)" class="s3-btn press-btn py-3 rounded-xl font-black text-base sm:text-lg border-2">위반(0)</button>
+          </div>
+          <input id="range-s3" type="range" min="0" max="15" step="1" value="15" oninput="setItemScore(3, this.value)" class="w-full mt-3" />
+        </div>
+
+        <!-- 4. 청소 및 원상복구 (35점 - 최고배점) -->
+        <div class="p-4 rounded-2xl bg-emerald-50/70 border-2 border-emerald-400">
+          <div class="flex items-center justify-between mb-2">
+            <div>
+              <span class="px-2.5 py-0.5 rounded-full text-xs font-black bg-emerald-600 text-white">★ 최고 배점 항목</span>
+              <div class="text-lg sm:text-xl font-black text-slate-900 mt-0.5">4. 청소 및 교실 원상복구 상태</div>
+              <p class="text-sm sm:text-base font-semibold text-emerald-900">쓰레기봉투 분리배출, 책걸상 원상배치, 칠판·바닥 청결</p>
+            </div>
+            <div class="text-2xl sm:text-3xl font-black text-emerald-700"><span id="val-s4">35</span> <span class="text-base text-slate-400">/ 35점</span></div>
+          </div>
+          <div class="grid grid-cols-5 gap-2 mt-2">
+            <button onclick="setItemScore(4, 35)" class="s4-btn press-btn py-3 rounded-xl font-black text-base sm:text-lg border-2">완벽복구(35)</button>
+            <button onclick="setItemScore(4, 32)" class="s4-btn press-btn py-3 rounded-xl font-black text-base sm:text-lg border-2">우수(32)</button>
+            <button onclick="setItemScore(4, 28)" class="s4-btn press-btn py-3 rounded-xl font-black text-base sm:text-lg border-2">보통(28)</button>
+            <button onclick="setItemScore(4, 22)" class="s4-btn press-btn py-3 rounded-xl font-black text-base sm:text-lg border-2">미흡(22)</button>
+            <button onclick="setItemScore(4, 0)" class="s4-btn press-btn py-3 rounded-xl font-black text-base sm:text-lg border-2">방치(0)</button>
+          </div>
+          <input id="range-s4" type="range" min="0" max="35" step="1" value="35" oninput="setItemScore(4, this.value)" class="w-full mt-3" />
+        </div>
+
+        <div>
+          <label class="block text-base sm:text-lg font-black text-slate-800 mb-1.5">💬 한줄 심사평 / 특기사항 메모 (선택)</label>
+          <input
+            id="modalComment"
+            type="text"
+            placeholder="예: 부원 전원이 질서정연하며 청소 뒷정리가 매우 모범적임"
+            class="w-full px-4 py-3.5 rounded-2xl bg-slate-50 border-2 border-slate-300 text-lg font-bold text-slate-900 focus:outline-none focus:border-pink-500"
+          />
+        </div>
+      </div>
+
+      <div class="mt-6 pt-4 border-t-2 border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3">
+        <div class="flex items-baseline gap-2">
+          <span class="text-lg sm:text-xl font-extrabold text-slate-600">합산 총점:</span>
+          <span id="modalTotalScore" class="text-4xl sm:text-5xl font-black text-pink-600">100</span>
+          <span class="text-xl font-bold text-slate-400">/ 100점</span>
+        </div>
+        <div class="flex w-full sm:w-auto gap-2.5">
+          <button onclick="closeScoreModal()" class="press-btn px-6 py-4 rounded-2xl bg-slate-200 hover:bg-slate-300 text-slate-800 font-black text-lg sm:text-xl">
+            취소
+          </button>
+          <button onclick="submitClubScore()" class="press-btn flex-1 sm:flex-initial px-8 py-4 rounded-2xl bg-gradient-to-r from-pink-600 via-rose-500 to-amber-500 text-white font-black text-xl sm:text-2xl shadow-lg">
+            ✅ 점수 저장 · 시트 전송
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+
+  <!-- ==================== [모달 3] 구글 시트 연동 모달 ==================== -->
+  <div id="configModal" onclick="if(event.target===this) closeConfigModal()" class="fixed inset-0 z-50 hidden bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white w-full max-w-2xl rounded-3xl p-6 sm:p-7 shadow-2xl border-4 border-slate-800 max-h-[90vh] overflow-y-auto space-y-4">
+      <div class="flex items-center justify-between pb-3 border-b-2 border-slate-200">
+        <h3 class="text-2xl font-black text-slate-900">⚙️ 구글 스프레드시트 실시간 수합 연동</h3>
+        <button onclick="closeConfigModal()" class="w-10 h-10 rounded-xl bg-slate-100 text-xl font-black">✕</button>
+      </div>
+
+      <div class="p-4 rounded-2xl bg-emerald-50 border-2 border-emerald-300 space-y-2 text-base font-bold text-slate-800">
+        <div class="text-lg font-black text-emerald-900">📌 1분 연동 안내</div>
+        <p class="text-sm sm:text-base leading-relaxed">
+          동아리 구글 시트의 <b>[확장 프로그램] ➔ [Apps Script]</b>에 자동 수합 코드를 배포한 뒤 웹앱 URL을 입력하시면, 7인 심사위원이 제출하는 점수가 구글 시트에 실시간으로 기록됩니다.
+        </p>
+        <button onclick="copyAppsScriptCode()" class="press-btn w-full mt-2 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-base shadow">
+          📋 구글 시트 자동 수합 코드(Code.gs) 클립보드 복사하기
+        </button>
+      </div>
+
+      <div>
+        <label class="block text-base font-black text-slate-800 mb-1">🔗 구글 Apps Script 웹 앱 URL 입력</label>
+        <input
+          id="gasUrlInput"
+          type="text"
+          placeholder="https://script.google.com/macros/s/.../exec"
+          class="w-full px-4 py-3.5 rounded-2xl bg-slate-50 border-2 border-slate-300 text-base font-bold text-slate-900 focus:outline-none focus:border-pink-500"
+        />
+      </div>
+
+      <div class="flex flex-wrap justify-between items-center gap-2 pt-3 border-t-2 border-slate-200">
+        <button onclick="loadDemoScores()" class="press-btn px-4 py-3 rounded-xl bg-amber-100 hover:bg-amber-200 text-amber-900 font-black text-sm sm:text-base border border-amber-300">
+          🧪 7인 심사위원 시연용 샘플 점수 채우기
+        </button>
+        <div class="flex gap-2">
+          <button onclick="clearAllLocalData()" class="press-btn px-4 py-3 rounded-xl bg-rose-100 hover:bg-rose-200 text-rose-800 font-black text-sm sm:text-base">
+            초기화
+          </button>
+          <button onclick="saveGasUrl()" class="press-btn px-6 py-3 rounded-xl bg-slate-900 text-white font-black text-base sm:text-lg">
+            저장 및 연동하기
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="toastBox" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 hidden px-6 py-4 rounded-2xl bg-slate-900 text-white font-black text-lg sm:text-xl shadow-2xl border-2 border-pink-400">
+    알림 메시지
+  </div>
+
+  <script>
+    // =========================================================================
+    // 1. 공식 심사위원단 7인 명단
+    // =========================================================================
+    const JUDGES = [
+      { name: "민선기", role: "심사위원 (자연과학부)", emoji: "🧬" },
+      { name: "백윤숙", role: "심사위원 (교육연구부)", emoji: "📖" },
+      { name: "손현자", role: "심사위원 (진로·행복교)", emoji: "🌱" },
+      { name: "유보경", role: "심사위원 (진로진학상담)", emoji: "💡" },
+      { name: "류재권", role: "심사위원 (2학년부장)", emoji: "🎯" },
+      { name: "신성철", role: "심사위원 (학생자치부장)", emoji: "🛡️" },
+      { name: "조호묵", role: "심사위원 (교감)", emoji: "🏛️" }
+    ];
+
+    // =========================================================================
+    // 2. 전체 38개 동아리 목록
+    // =========================================================================
+    const CLUBS = [
+      { id: 1, name: "경제경영 위키", field: "사회과학", room: "1-1, 1-2", floor: 5, teachers: "이효은, 김수진", emoji: "📈" },
+      { id: 2, name: "교집합", field: "언어·교육", room: "2-8, 2-9", floor: 5, teachers: "서성미, 장현정", emoji: "🎓" },
+      { id: 3, name: "교집합3", field: "교육", room: "3-10", floor: 3, teachers: "임선아", emoji: "📚" },
+      { id: 4, name: "다각도", field: "사회과학", room: "청운관", floor: 3, teachers: "김민희, 진보경", emoji: "🔭" },
+      { id: 5, name: "도서관사람들", field: "도서·기타", room: "도서관", floor: 2, teachers: "신보아", emoji: "📖" },
+      { id: 6, name: "또래상담부", field: "사회과학·상담", room: "2-6", floor: 5, teachers: "정희진", emoji: "💌" },
+      { id: 7, name: "러쉬온미", field: "문화·예술(댄스)", room: "2층 방과후교실·강당", floor: 2, teachers: "박윤주", emoji: "💃" },
+      { id: 8, name: "리아트", field: "미술·애니", room: "1-10", floor: 3, teachers: "정지혜", emoji: "🎨" },
+      { id: 9, name: "마케팅 허브", field: "사회과학", room: "1-6", floor: 3, teachers: "신동빈, 김진아", emoji: "💡" },
+      { id: 10, name: "멘날바", field: "과학실험", room: "지구과학실", floor: 4, teachers: "김희규, 조자경", emoji: "🌍" },
+      { id: 11, name: "밴드부", field: "문화·예술(음악)", room: "음악실·강당", floor: 1, teachers: "안효주", emoji: "🎸" },
+      { id: 12, name: "베이킹 메이킹", field: "실습·노작", room: "기술가정실", floor: 3, teachers: "이소희", emoji: "🥨" },
+      { id: 13, name: "뷰티아트", field: "뷰티·미용", room: "3-7", floor: 3, teachers: "권서연", emoji: "💄" },
+      { id: 14, name: "비랩", field: "경제·사회", room: "3-8", floor: 3, teachers: "윤진숙", emoji: "📊" },
+      { id: 15, name: "생명탐험대", field: "생명·보건", room: "3-2", floor: 4, teachers: "기영욱", emoji: "🧬" },
+      { id: 16, name: "소나기", field: "방송·미디어", room: "방송실 / 방과후1실", floor: 2, teachers: "정원양", emoji: "🎙️" },
+      { id: 17, name: "소비의 정석", field: "사회과학", room: "1-3", floor: 4, teachers: "장용훈, 이정훈", emoji: "🛒" },
+      { id: 18, name: "소사이트", field: "시사·인문사회", room: "3-1", floor: 4, teachers: "이현정", emoji: "📰" },
+      { id: 19, name: "소프라테스", field: "사회과학", room: "2-4", floor: 5, teachers: "유지원, 김영재", emoji: "🏛️" },
+      { id: 20, name: "스카이", field: "과학실험(항공)", room: "2-7", floor: 5, teachers: "이영탁", emoji: "🚀" },
+      { id: 21, name: "스파크", field: "과학실험", room: "물리실", floor: 4, teachers: "전유진, 손만주", emoji: "⚡" },
+      { id: 22, name: "시그마이", field: "컴퓨터·IT", room: "3-6", floor: 3, teachers: "이종환", emoji: "💻" },
+      { id: 23, name: "시네필로소피", field: "미디어·영화", room: "3-9", floor: 3, teachers: "장문석", emoji: "🎬" },
+      { id: 24, name: "시퀀스", field: "문화·예술(연극)", room: "시청각실", floor: 1, teachers: "임채영, 주혜리", emoji: "🎭" },
+      { id: 25, name: "아뜰리에", field: "실습·노작", room: "2-10", floor: 5, teachers: "노기원, 김정택", emoji: "✨" },
+      { id: 26, name: "아스클", field: "과학실험(화학)", room: "화학실", floor: 5, teachers: "김정현, 최화선", emoji: "🧪" },
+      { id: 27, name: "아트 시그널", field: "문화·예술", room: "1-9", floor: 3, teachers: "안채옥, 오수정", emoji: "🖌️" },
+      { id: 28, name: "알고리즘", field: "컴퓨터·정보", room: "컴퓨터실", floor: 2, teachers: "정선옥", emoji: "🤖" },
+      { id: 29, name: "애그부", field: "문화·예술(애니)", room: "2-1, 2-2, 2-3", floor: 5, teachers: "이혜림, 김유은, 이성희", emoji: "🎡" },
+      { id: 30, name: "유아트", field: "문화·예술(미술)", room: "미술실", floor: 5, teachers: "홍정화, 이민희", emoji: "🖼️" },
+      { id: 31, name: "잡지식 플러스", field: "진로·인문", room: "3-3", floor: 4, teachers: "박송화", emoji: "📒" },
+      { id: 32, name: "진로 인사이트", field: "진로·탐구", room: "3-5", floor: 4, teachers: "박서연", emoji: "🧭" },
+      { id: 33, name: "체대가", field: "체육·스포츠", room: "강당(운양관)", floor: 3, teachers: "오성화", emoji: "🏋️" },
+      { id: 34, name: "퍼텐셜", field: "공학·로봇", room: "1-5", floor: 4, teachers: "염종웅", emoji: "⚙️" },
+      { id: 35, name: "프리즘", field: "과학실험(융합)", room: "2-5", floor: 5, teachers: "김은선", emoji: "🌈" },
+      { id: 36, name: "피에스", field: "체육·스포츠", room: "강당(운양관)", floor: 3, teachers: "홍철승", emoji: "🏀" },
+      { id: 37, name: "화생방", field: "과학실험(생명)", room: "생물실", floor: 5, teachers: "이재권, 이이라", emoji: "🔬" },
+      { id: 38, name: "활자중독", field: "독서·인문사회", room: "3-4", floor: 4, teachers: "오예정", emoji: "🖋️" }
+    ];
+
+    // =========================================================================
+    // 3. 상태 관리
+    // =========================================================================
+    const STORAGE_KEY_RECORDS = "UNYANG_KPOP_SCORES_7JUDGES_V2";
+    const STORAGE_KEY_JUDGE = "UNYANG_KPOP_CURRENT_JUDGE_V2";
+    const STORAGE_KEY_GAS_URL = "UNYANG_KPOP_GAS_URL_V2";
+
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('gas')) {
+      localStorage.setItem(STORAGE_KEY_GAS_URL, urlParams.get('gas').trim());
+    }
+
+    let currentJudge = localStorage.getItem(STORAGE_KEY_JUDGE) || "민선기";
+    let gasWebAppUrl = localStorage.getItem(STORAGE_KEY_GAS_URL) || "";
+    let allRecords = JSON.parse(localStorage.getItem(STORAGE_KEY_RECORDS) || "[]");
+
+    let activeFloorFilter = "all";
+    let activeStatusFilter = "all";
+    let activeRankSort = "avg";
+    let editingClubId = null;
+    let draftScores = { s1: 25, s2: 25, s3: 15, s4: 35 };
+
+    // =========================================================================
+    // 4. 초기화 및 탭 전환
+    // =========================================================================
+    window.addEventListener("DOMContentLoaded", () => {
+      updateJudgeUI();
+      renderClubGrid();
+      renderMatrixView();
+      renderRankingView();
+      if (gasWebAppUrl) {
+        document.getElementById("gasUrlInput").value = gasWebAppUrl;
+        syncFromCloud(false);
+      }
+      setInterval(() => {
+        if (gasWebAppUrl) syncFromCloud(false);
+      }, 15000);
+    });
+
+    function switchTab(tab) {
+      ["judge", "matrix", "rank"].forEach(t => {
+        const sec = document.getElementById(`section-${t}`);
+        const btn = document.getElementById(`tab-${t}`);
+        if (t === tab) {
+          sec.classList.remove("hidden");
+          btn.className = "press-btn py-3 rounded-xl text-base sm:text-xl font-black transition bg-gradient-to-r from-pink-600 to-rose-500 text-white shadow-md";
+        } else {
+          sec.classList.add("hidden");
+          btn.className = "press-btn py-3 rounded-xl text-base sm:text-xl font-extrabold transition text-slate-700 hover:bg-white";
+        }
+      });
+      if (tab === "judge") renderClubGrid();
+      if (tab === "matrix") renderMatrixView();
+      if (tab === "rank") renderRankingView();
+    }
+
+    function showToast(msg) {
+      const box = document.getElementById("toastBox");
+      box.textContent = msg;
+      box.classList.remove("hidden");
+      setTimeout(() => box.classList.add("hidden"), 2800);
+    }
+
+    // =========================================================================
+    // 5. 심사위원 7인 선택
+    // =========================================================================
+    function openJudgeModal() {
+      const container = document.getElementById("judgeModalGrid");
+      container.innerHTML = JUDGES.map(j => {
+        const isSelected = j.name === currentJudge;
+        const myCount = allRecords.filter(r => r.teacher === j.name).length;
+        return `
+          <button onclick="selectJudge('${j.name}')" class="press-btn p-4 rounded-2xl border-2 text-center transition flex flex-col items-center justify-center ${
+            isSelected
+              ? 'bg-pink-600 text-white border-pink-700 shadow-lg'
+              : 'bg-white hover:bg-pink-50 text-slate-900 border-slate-300'
+          }">
+            <div class="text-3xl">${j.emoji}</div>
+            <div class="text-xl sm:text-2xl font-black mt-1">${j.name}</div>
+            <div class="text-xs font-bold mt-0.5 ${isSelected ? 'text-pink-100' : 'text-slate-500'}">
+              ${j.role}
+            </div>
+            <div class="mt-2 px-2.5 py-0.5 rounded-full text-xs font-black ${
+              isSelected ? 'bg-white text-pink-700' : 'bg-pink-100 text-pink-700'
+            }">
+              채점 ${myCount} / 38
+            </div>
+          </button>
+        `;
+      }).join("");
+
+      document.getElementById("judgeModal").classList.remove("hidden");
+    }
+
+    function closeJudgeModal() {
+      document.getElementById("judgeModal").classList.add("hidden");
+    }
+
+    function selectJudge(name) {
+      currentJudge = name;
+      localStorage.setItem(STORAGE_KEY_JUDGE, name);
+      closeJudgeModal();
+      updateJudgeUI();
+      renderClubGrid();
+      renderMatrixView();
+      showToast(`⭐ [${name} 심사위원] 화면으로 전환되었습니다!`);
+    }
+
+    function updateJudgeUI() {
+      const label = document.getElementById("currentJudgeLabel");
+      const welcome = document.getElementById("judgeWelcomeText");
+      const myScoredEl = document.getElementById("myScoredCount");
+      const bar = document.getElementById("myProgressBar");
+
+      label.textContent = `${currentJudge} 위원`;
+      const myRecords = allRecords.filter(r => r.teacher === currentJudge);
+      const cnt = myRecords.length;
+      const pct = Math.min(100, Math.round((cnt / CLUBS.length) * 100));
+      welcome.innerHTML = `<span class="text-pink-600">${currentJudge} 심사위원님</span>, 현재 <b>38개 중 ${cnt}개</b> 동아리 채점을 완료하셨습니다! (${pct}%)`;
+      myScoredEl.textContent = String(cnt);
+      bar.style.width = `${pct}%`;
+    }
+
+    // =========================================================================
+    // 6. 채점 그리드 & 필터
+    // =========================================================================
+    function setFloorFilter(fl) {
+      activeFloorFilter = fl;
+      ["all", 1, 2, 3, 4, 5].forEach(x => {
+        const btn = document.getElementById(`floorBtn-${x}`);
+        if (x === fl) btn.className = "press-btn py-3 rounded-2xl text-base sm:text-lg font-black bg-pink-600 text-white shadow";
+        else btn.className = "press-btn py-3 rounded-2xl text-base sm:text-lg font-extrabold bg-white text-slate-800 border-2 border-slate-300";
+      });
+      renderClubGrid();
+    }
+
+    function setStatusFilter(st) {
+      activeStatusFilter = st;
+      ["all", "unscored", "scored"].forEach(x => {
+        const btn = document.getElementById(`statusBtn-${x}`);
+        if (x === st) btn.className = "press-btn px-4 py-3 rounded-2xl text-base sm:text-lg font-black bg-slate-900 text-white";
+        else btn.className = "press-btn px-4 py-3 rounded-2xl text-base sm:text-lg font-extrabold bg-slate-100 text-slate-700 border-2 border-slate-300";
+      });
+      renderClubGrid();
+    }
+
+    function clearClubSearch() {
+      document.getElementById("clubSearchInput").value = "";
+      renderClubGrid();
+    }
+
+    function renderClubGrid() {
+      const q = document.getElementById("clubSearchInput").value.trim().toLowerCase();
+      const container = document.getElementById("clubGridContainer");
+
+      const filtered = CLUBS.filter(c => {
+        if (activeFloorFilter !== "all" && c.floor !== activeFloorFilter) return false;
+        const myRec = allRecords.find(r => r.teacher === currentJudge && r.clubName === c.name);
+        if (activeStatusFilter === "scored" && !myRec) return false;
+        if (activeStatusFilter === "unscored" && myRec) return false;
+        if (q) {
+          const hay = `${c.name} ${c.field} ${c.room} ${c.teachers} ${c.floor}층`.toLowerCase();
+          if (!hay.includes(q)) return false;
+        }
+        return true;
+      });
+
+      if (filtered.length === 0) {
+        container.innerHTML = `
+          <div class="col-span-2 bright-card rounded-3xl p-10 text-center text-xl font-bold text-slate-500">
+            조건에 해당하는 동아리가 없습니다.
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = filtered.map(c => {
+        const myRec = allRecords.find(r => r.teacher === currentJudge && r.clubName === c.name);
+        const clubRecs = allRecords.filter(r => r.clubName === c.name);
+        const avg = clubRecs.length > 0
+          ? (clubRecs.reduce((acc, r) => acc + Number(r.total), 0) / clubRecs.length).toFixed(1)
+          : "-";
+
+        // 누가 채점했는지 작은 칩 표시
+        const judgesWhoScored = clubRecs.map(r => r.teacher).join(", ");
+
+        return `
+          <div onclick="openScoreModal(${c.id})" class="press-btn cursor-pointer rounded-3xl p-5 transition flex flex-col justify-between ${
+            myRec ? 'bright-card-active bg-pink-50/30' : 'bright-card hover:border-pink-400'
+          }">
+            <div>
+              <div class="flex items-center justify-between gap-2">
+                <div class="flex items-center gap-2">
+                  <span class="px-3 py-1 rounded-xl text-sm sm:text-base font-black bg-indigo-100 text-indigo-800 border border-indigo-200">
+                    📍 ${c.floor}층 · ${c.room}
+                  </span>
+                  <span class="px-2.5 py-1 rounded-xl text-xs sm:text-sm font-extrabold bg-slate-100 text-slate-600">
+                    ${c.field}
+                  </span>
+                </div>
+                ${
+                  myRec
+                    ? `<span class="px-3 py-1 rounded-full text-sm sm:text-base font-black bg-emerald-500 text-white shadow-sm">✅ 내 점수: ${myRec.total}점</span>`
+                    : `<span class="px-3 py-1 rounded-full text-sm sm:text-base font-extrabold bg-slate-200 text-slate-700">⚪ 미채점</span>`
+                }
+              </div>
+
+              <div class="flex items-center gap-3 mt-3">
+                <span class="text-3xl sm:text-4xl p-2.5 rounded-2xl bg-amber-50 border border-amber-200">${c.emoji}</span>
+                <div>
+                  <h3 class="text-2xl sm:text-3xl font-black text-slate-900">${c.id}. ${c.name}</h3>
+                  <p class="text-sm sm:text-base font-bold text-slate-500 mt-0.5">지도교사: ${c.teachers}</p>
+                </div>
+              </div>
+
+              <!-- 채점 위원 현황 칩 -->
+              <div class="mt-2.5 text-xs sm:text-sm font-bold text-slate-500">
+                👥 채점한 위원(${clubRecs.length}/7명): <span class="text-slate-800 font-extrabold">${judgesWhoScored || '없음'}</span>
+              </div>
+            </div>
+
+            <div class="mt-4 pt-3 border-t-2 border-slate-100 flex items-center justify-between">
+              <div class="text-base font-extrabold text-slate-600">
+                실시간 7인 평균: <span class="text-pink-600 font-black text-xl">${avg}점</span>
+              </div>
+              <span class="px-4 py-2 rounded-xl text-base font-black ${
+                myRec ? 'bg-pink-100 text-pink-700' : 'bg-pink-600 text-white shadow'
+              }">
+                ${myRec ? '점수 수정 👉' : '채점하기 👉'}
+              </span>
+            </div>
+          </div>
+        `;
+      }).join("");
+    }
+
+    // =========================================================================
+    // 7. 채점 입력 & 저장
+    // =========================================================================
+    function openScoreModal(clubId) {
+      const club = CLUBS.find(x => x.id === clubId);
+      if (!club) return;
+      editingClubId = clubId;
+
+      document.getElementById("modalClubBadge").textContent = `📍 ${club.floor}층 · ${club.room}`;
+      document.getElementById("modalClubField").textContent = club.field;
+      document.getElementById("modalClubTitle").textContent = `${club.emoji} ${club.id}. ${club.name}`;
+      document.getElementById("modalClubSub").textContent = `지도교사: ${club.teachers} 선생님 | 심사위원: ${currentJudge} 선생님`;
+
+      const existing = allRecords.find(r => r.teacher === currentJudge && r.clubName === club.name);
+      if (existing) {
+        draftScores = { s1: Number(existing.s1), s2: Number(existing.s2), s3: Number(existing.s3), s4: Number(existing.s4) };
+        document.getElementById("modalComment").value = existing.comment || "";
+      } else {
+        draftScores = { s1: 25, s2: 25, s3: 15, s4: 35 };
+        document.getElementById("modalComment").value = "";
+      }
+
+      refreshScoreModalControls();
+      document.getElementById("scoreModal").classList.remove("hidden");
+    }
+
+    function closeScoreModal() {
+      document.getElementById("scoreModal").classList.add("hidden");
+    }
+
+    function setItemScore(itemIdx, val) {
+      draftScores[`s${itemIdx}`] = Number(val);
+      refreshScoreModalControls();
+    }
+
+    function applyPreset(v1, v2, v3, v4) {
+      draftScores = { s1: v1, s2: v2, s3: v3, s4: v4 };
+      refreshScoreModalControls();
+    }
+
+    function refreshScoreModalControls() {
+      [1, 2, 3, 4].forEach(idx => {
+        const val = draftScores[`s${idx}`];
+        document.getElementById(`val-s${idx}`).textContent = val;
+        document.getElementById(`range-s${idx}`).value = val;
+
+        document.querySelectorAll(`.s${idx}-btn`).forEach(btn => {
+          const m = btn.getAttribute("onclick").match(/,\s*(\d+)\)/);
+          const btnVal = m ? Number(m[1]) : -1;
+          if (btnVal === val) {
+            btn.className = `s${idx}-btn press-btn py-3 rounded-xl font-black text-base sm:text-lg border-2 bg-pink-600 text-white border-pink-700 shadow`;
+          } else {
+            btn.className = `s${idx}-btn press-btn py-3 rounded-xl font-black text-base sm:text-lg border-2 bg-white text-slate-700 border-slate-300 hover:bg-slate-100`;
+          }
+        });
+      });
+
+      const total = draftScores.s1 + draftScores.s2 + draftScores.s3 + draftScores.s4;
+      document.getElementById("modalTotalScore").textContent = total;
+    }
+
+    async function submitClubScore() {
+      const club = CLUBS.find(x => x.id === editingClubId);
+      if (!club || !currentJudge) return;
+
+      const total = draftScores.s1 + draftScores.s2 + draftScores.s3 + draftScores.s4;
+      const comment = document.getElementById("modalComment").value.trim();
+      const nowStr = new Date().toLocaleString("ko-KR", { hour12: false });
+      const key = `${currentJudge}__${club.name}`;
+
+      const record = {
+        timestamp: nowStr,
+        key: key,
+        teacher: currentJudge,
+        teacherRole: "심사위원",
+        clubId: club.id,
+        clubName: club.name,
+        room: club.room,
+        floor: `${club.floor}층`,
+        s1: draftScores.s1,
+        s2: draftScores.s2,
+        s3: draftScores.s3,
+        s4: draftScores.s4,
+        total: total,
+        comment: comment
+      };
+
+      const idx = allRecords.findIndex(r => r.key === key || (r.teacher === currentJudge && r.clubName === club.name));
+      if (idx >= 0) allRecords[idx] = record;
+      else allRecords.push(record);
+
+      localStorage.setItem(STORAGE_KEY_RECORDS, JSON.stringify(allRecords));
+
+      closeScoreModal();
+      updateJudgeUI();
+      renderClubGrid();
+      renderMatrixView();
+      renderRankingView();
+
+      if (typeof confetti === "function") {
+        confetti({ particleCount: 50, spread: 60, origin: { y: 0.75 } });
+      }
+
+      if (gasWebAppUrl) {
+        updateSyncBadge("🟡 시트 전송 중...", "amber");
+        try {
+          const res = await fetch(gasWebAppUrl, {
+            method: "POST",
+            headers: { "Content-Type": "text/plain;charset=utf-8" },
+            body: JSON.stringify(record)
+          });
+          const data = await res.json();
+          if (data && Array.isArray(data.records)) {
+            mergeCloudRecords(data.records);
+          }
+          updateSyncBadge("🟢 시트 실시간 연동됨", "emerald");
+          showToast(`✅ [${club.name}] ${total}점 저장 및 구글 시트 전송 완료!`);
+        } catch (err) {
+          updateSyncBadge("🟠 로컬 저장됨", "amber");
+          showToast(`✅ [${club.name}] ${total}점 저장 완료!`);
+        }
+      } else {
+        showToast(`✅ [${club.name}] ${total}점 채점 저장 완료!`);
+      }
+    }
+
+    // =========================================================================
+    // 8. [신규 핵심 기능] 누가 어디를 채점했는지 실시간 매트릭스 뷰
+    // =========================================================================
+    function renderMatrixView() {
+      document.getElementById("matrixTotalCount").textContent = allRecords.length;
+
+      // 상단 7인 심사위원 진행 요약 카드
+      const summaryEl = document.getElementById("judgeSummaryCards");
+      summaryEl.innerHTML = JUDGES.map(j => {
+        const jRecs = allRecords.filter(r => r.teacher === j.name);
+        const cnt = jRecs.length;
+        const avg = cnt > 0 ? (jRecs.reduce((a, r) => a + Number(r.total), 0) / cnt).toFixed(1) : "-";
+        const isCurrent = j.name === currentJudge;
+        return `
+          <div onclick="selectJudge('${j.name}')" class="press-btn cursor-pointer p-3 rounded-2xl border-2 text-center transition ${
+            isCurrent ? 'bg-pink-600 text-white border-pink-700 shadow-md' : 'bg-white border-slate-200 hover:border-pink-300 text-slate-800'
+          }">
+            <div class="text-xl sm:text-2xl">${j.emoji}</div>
+            <div class="text-lg font-black mt-0.5">${j.name}</div>
+            <div class="text-xs font-extrabold mt-1 ${isCurrent ? 'text-pink-100' : 'text-pink-600'}">
+              <b>${cnt}</b> / 38개
+            </div>
+            <div class="text-xs font-bold mt-0.5 ${isCurrent ? 'text-white' : 'text-slate-500'}">
+              평균: ${avg}점
+            </div>
+          </div>
+        `;
+      }).join("");
+
+      // 38개 동아리 x 7인 실시간 매트릭스 표 (실선 HTML 표)
+      const tbody = document.getElementById("matrixTableBody");
+      tbody.innerHTML = CLUBS.map(c => {
+        const clubRecs = allRecords.filter(r => r.clubName === c.name);
+        const count = clubRecs.length;
+        const avg = count > 0 ? (clubRecs.reduce((a, r) => a + Number(r.total), 0) / count).toFixed(1) : "-";
+
+        // 7인 각각의 점수 셀 생성
+        const judgeCells = JUDGES.map(j => {
+          const rec = allRecords.find(r => r.teacher === j.name && r.clubName === c.name);
+          if (rec) {
+            return `
+              <td style="border: 1px solid #333; padding: 8px; text-align: center; background-color: #dcfce7; color: #166534; font-weight: 900;" title="${j.name}: ${rec.total}점 (메모: ${rec.comment || '없음'})">
+                ${rec.total}
+              </td>
+            `;
+          } else {
+            return `
+              <td style="border: 1px solid #333; padding: 8px; text-align: center; color: #94a3b8; font-weight: bold;">
+                -
+              </td>
+            `;
+          }
+        }).join("");
+
+        const rowBg = count === 7 ? "#fdf4ff" : (count >= 4 ? "#f0fdf4" : "#ffffff");
+
+        return `
+          <tr style="background-color: ${rowBg};">
+            <td style="border: 1px solid #333; padding: 8px; text-align: center; font-weight: 900;">${c.id}</td>
+            <td style="border: 1px solid #333; padding: 8px; font-weight: 900;">${c.emoji} ${c.name}</td>
+            <td style="border: 1px solid #333; padding: 8px; text-align: center; font-size: 14px;">${c.floor}층 ${c.room}</td>
+            ${judgeCells}
+            <td style="border: 1px solid #333; padding: 8px; text-align: center; font-weight: 900; color: #4338ca;">${count}/7</td>
+            <td style="border: 1px solid #333; padding: 8px; text-align: center; font-weight: 900; color: #db2777;">${avg}점</td>
+          </tr>
+        `;
+      }).join("");
+    }
+
+    function copyMatrixTableForHwp() {
+      const table = document.getElementById("matrixHtmlTable");
+      const range = document.createRange();
+      range.selectNode(table);
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+      document.execCommand("copy");
+      sel.removeAllRanges();
+      showToast("📋 7인 채점 매트릭스 표가 복사되었습니다! 한글이나 노션에 붙여넣기(Ctrl+V) 하세요!");
+    }
+
+    // =========================================================================
+    // 9. 실시간 1·2·3등 순위 대시보드
+    // =========================================================================
+    function setRankSort(mode) {
+      activeRankSort = mode;
+      ["avg", "sum", "clean"].forEach(m => {
+        const btn = document.getElementById(`sortBtn-${m}`);
+        if (m === mode) btn.className = "press-btn px-4 py-2 rounded-xl text-base font-black bg-pink-600 text-white";
+        else btn.className = "press-btn px-4 py-2 rounded-xl text-base font-bold bg-slate-100 text-slate-700 border border-slate-300";
+      });
+      renderRankingView();
+    }
+
+    function computeClubRankings() {
+      const stats = CLUBS.map(c => {
+        const recs = allRecords.filter(r => r.clubName === c.name);
+        const count = recs.length;
+        const sumTotal = recs.reduce((a, r) => a + Number(r.total), 0);
+        const sumS1 = recs.reduce((a, r) => a + Number(r.s1), 0);
+        const sumS2 = recs.reduce((a, r) => a + Number(r.s2), 0);
+        const sumS3 = recs.reduce((a, r) => a + Number(r.s3), 0);
+        const sumS4 = recs.reduce((a, r) => a + Number(r.s4), 0);
+
+        return {
+          ...c,
+          count,
+          sumTotal,
+          avgTotal: count > 0 ? +(sumTotal / count).toFixed(2) : 0,
+          avgS1: count > 0 ? +(sumS1 / count).toFixed(1) : 0,
+          avgS2: count > 0 ? +(sumS2 / count).toFixed(1) : 0,
+          avgS3: count > 0 ? +(sumS3 / count).toFixed(1) : 0,
+          avgS4: count > 0 ? +(sumS4 / count).toFixed(1) : 0
+        };
+      });
+
+      stats.sort((a, b) => {
+        if (activeRankSort === "sum") {
+          return (b.sumTotal - a.sumTotal) || (b.avgTotal - a.avgTotal) || (b.avgS4 - a.avgS4);
+        }
+        if (activeRankSort === "clean") {
+          return (b.avgS4 - a.avgS4) || (b.avgTotal - a.avgTotal) || (b.count - a.count);
+        }
+        return (b.avgTotal - a.avgTotal) || (b.avgS4 - a.avgS4) || (b.count - a.count);
+      });
+
+      return stats;
+    }
+
+    function renderRankingView() {
+      const rankings = computeClubRankings();
+      const top3 = rankings.slice(0, 3);
+      const podiumEl = document.getElementById("podiumContainer");
+      const medals = [
+        { title: "🥇 1위 (최우수상 20만원)", border: "border-amber-400 bg-amber-50/70", badge: "bg-amber-400 text-slate-950" },
+        { title: "🥈 2위 (우수상 12만원)", border: "border-slate-400 bg-slate-50/80", badge: "bg-slate-700 text-white" },
+        { title: "🥉 3위 (우수상 12만원)", border: "border-orange-400 bg-orange-50/60", badge: "bg-orange-600 text-white" }
+      ];
+
+      podiumEl.innerHTML = top3.map((item, idx) => {
+        const m = medals[idx];
+        return `
+          <div class="rounded-3xl p-5 border-4 ${m.border} shadow-md flex flex-col justify-between">
+            <div>
+              <span class="px-3 py-1 rounded-full text-sm font-black ${m.badge}">${m.title}</span>
+              <div class="flex items-center gap-2.5 mt-3">
+                <span class="text-4xl">${item.emoji}</span>
+                <div>
+                  <h4 class="text-2xl sm:text-3xl font-black text-slate-900">${item.name}</h4>
+                  <p class="text-base font-bold text-slate-600">📍 ${item.floor}층 ${item.room}</p>
+                </div>
+              </div>
+            </div>
+            <div class="mt-4 pt-3 border-t-2 border-slate-200 flex items-baseline justify-between">
+              <div class="text-sm sm:text-base font-extrabold text-slate-600">심사위원: <b>${item.count} / 7명</b></div>
+              <div class="text-3xl sm:text-4xl font-black text-pink-600">${item.avgTotal}<span class="text-base text-slate-500">점</span></div>
+            </div>
+          </div>
+        `;
+      }).join("");
+
+      const tbody = document.getElementById("rankingTableBody");
+      tbody.innerHTML = rankings.map((item, idx) => {
+        const rank = idx + 1;
+        let awardLabel = `${rank}위`;
+        if (item.count === 0) awardLabel = "미채점";
+        else if (rank === 1) awardLabel = "🏆 최우수상 (1위)";
+        else if (rank >= 2 && rank <= 4) awardLabel = "🥈 우수상 (2~4위)";
+        else if (rank >= 5 && rank <= 9) awardLabel = "🥉 장려상 (5~9위)";
+
+        const rowBg = rank === 1 ? "#fef3c7" : (rank <= 4 ? "#eef2ff" : (rank <= 9 ? "#ecfdf5" : "#ffffff"));
+        return `
+          <tr style="background-color: ${rowBg};">
+            <td style="border: 1px solid #333; padding: 10px; text-align: center; font-weight: 900;">${rank}위</td>
+            <td style="border: 1px solid #333; padding: 10px; text-align: center; font-weight: bold;">${awardLabel}</td>
+            <td style="border: 1px solid #333; padding: 10px; font-weight: 900;">${item.emoji} ${item.name}</td>
+            <td style="border: 1px solid #333; padding: 10px; text-align: center;">${item.floor}층 ${item.room}</td>
+            <td style="border: 1px solid #333; padding: 10px; text-align: center; font-weight: bold;">${item.count} / 7명</td>
+            <td style="border: 1px solid #333; padding: 10px; text-align: center; color: #db2777; font-weight: 900;">${item.avgTotal}점</td>
+            <td style="border: 1px solid #333; padding: 10px; text-align: center;">${item.sumTotal}점</td>
+            <td style="border: 1px solid #333; padding: 10px; text-align: center;">${item.avgS1}</td>
+            <td style="border: 1px solid #333; padding: 10px; text-align: center;">${item.avgS2}</td>
+            <td style="border: 1px solid #333; padding: 10px; text-align: center;">${item.avgS3}</td>
+            <td style="border: 1px solid #333; padding: 10px; text-align: center; color: #047857; font-weight: 900;">${item.avgS4}</td>
+          </tr>
+        `;
+      }).join("");
+    }
+
+    function copyRankingTableForHwp() {
+      const table = document.getElementById("rankingHtmlTable");
+      const range = document.createRange();
+      range.selectNode(table);
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+      document.execCommand("copy");
+      sel.removeAllRanges();
+      showToast("📋 순위표가 복사되었습니다! 한글(HWP)이나 노션에 붙여넣기(Ctrl+V) 하세요!");
+    }
+
+    function exportRankingCSV() {
+      const rankings = computeClubRankings();
+      const rows = [
+        ["순위", "예정훈격", "동아리번호", "동아리명", "분야", "층수", "장소", "채점위원수", "평균총점(100)", "누적합계", "교육가치평균(25)", "부스운영평균(25)", "안전질서평균(15)", "청소복구평균(35)"]
+      ];
+      rankings.forEach((item, idx) => {
+        const rank = idx + 1;
+        let award = `${rank}위`;
+        if (rank === 1) award = "최우수상(1위)";
+        else if (rank <= 4) award = "우수상(2~4위)";
+        else if (rank <= 9) award = "장려상(5~9위)";
+        rows.push([
+          `${rank}위`, award, item.id, item.name, item.field, `${item.floor}층`, item.room,
+          item.count, item.avgTotal, item.sumTotal, item.avgS1, item.avgS2, item.avgS3, item.avgS4
+        ]);
+      });
+      const csv = "\uFEFF" + rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\r\n");
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "2026_운양고_동아리발표회_실시간순위표.csv";
+      a.click();
+      showToast("📥 순위표 CSV 다운로드 완료!");
+    }
+
+    // =========================================================================
+    // 10. 동기화 및 시연용 샘플 점수
+    // =========================================================================
+    function updateSyncBadge(text, color) {
+      document.getElementById("syncBadge").textContent = text;
+    }
+
+    function mergeCloudRecords(cloudList) {
+      const map = {};
+      allRecords.forEach(r => { map[r.key || `${r.teacher}__${r.clubName}`] = r; });
+      cloudList.forEach(r => { map[r.key || `${r.teacher}__${r.clubName}`] = r; });
+      allRecords = Object.values(map);
+      localStorage.setItem(STORAGE_KEY_RECORDS, JSON.stringify(allRecords));
+      updateJudgeUI();
+      renderClubGrid();
+      renderMatrixView();
+      renderRankingView();
+    }
+
+    async function syncFromCloud(showAlert) {
+      if (!gasWebAppUrl) {
+        if (showAlert) openConfigModal();
+        return;
+      }
+      updateSyncBadge("🔄 시트 데이터 수신 중...", "amber");
+      try {
+        const res = await fetch(gasWebAppUrl + "?t=" + Date.now());
+        const data = await res.json();
+        if (data && Array.isArray(data.records)) {
+          mergeCloudRecords(data.records);
+          updateSyncBadge(`🟢 시트 연동 완료 (${allRecords.length}건)`, "emerald");
+          if (showAlert) showToast(`🔄 구글 시트에서 최신 채점 데이터(${allRecords.length}건)를 불러왔습니다!`);
+        }
+      } catch (e) {
+        updateSyncBadge("🟠 오프라인 모드", "amber");
+      }
+    }
+
+    function openConfigModal() {
+      document.getElementById("gasUrlInput").value = gasWebAppUrl;
+      document.getElementById("configModal").classList.remove("hidden");
+    }
+
+    function closeConfigModal() {
+      document.getElementById("configModal").classList.add("hidden");
+    }
+
+    function saveGasUrl() {
+      gasWebAppUrl = document.getElementById("gasUrlInput").value.trim();
+      localStorage.setItem(STORAGE_KEY_GAS_URL, gasWebAppUrl);
+      closeConfigModal();
+      if (gasWebAppUrl) syncFromCloud(true);
+      else showToast("로컬 저장 모드로 설정되었습니다.");
+    }
+
+    function clearAllLocalData() {
+      if (!confirm("현재 브라우저에 저장된 채점 데이터를 초기화하시겠습니까?")) return;
+      allRecords = [];
+      localStorage.removeItem(STORAGE_KEY_RECORDS);
+      updateJudgeUI();
+      renderClubGrid();
+      renderMatrixView();
+      renderRankingView();
+      closeConfigModal();
+      showToast("데이터가 초기화되었습니다.");
+    }
+
+    function loadDemoScores() {
+      const nowStr = new Date().toLocaleString("ko-KR", { hour12: false });
+      JUDGES.forEach((j, jIdx) => {
+        CLUBS.forEach((c, cIdx) => {
+          // 일부 심사위원은 특정 구역/부스를 아직 덜 본 상황 연출 (리얼리티)
+          if ((jIdx + cIdx) % 7 === 0) return;
+          const s1 = 20 + ((cIdx + jIdx) % 6);
+          const s2 = 21 + ((cIdx * 2 + jIdx) % 5);
+          const s3 = 13 + ((cIdx + jIdx) % 3);
+          const s4 = 28 + ((cIdx * 3 + jIdx) % 8);
+          const key = `${j.name}__${c.name}`;
+          const rec = {
+            timestamp: nowStr,
+            key,
+            teacher: j.name,
+            teacherRole: "심사위원",
+            clubId: c.id,
+            clubName: c.name,
+            room: c.room,
+            floor: `${c.floor}층`,
+            s1, s2, s3, s4,
+            total: s1 + s2 + s3 + s4,
+            comment: "부스 운영 및 청소 상태 양호"
+          };
+          const ex = allRecords.findIndex(r => r.key === key);
+          if (ex >= 0) allRecords[ex] = rec;
+          else allRecords.push(rec);
+        });
+      });
+      localStorage.setItem(STORAGE_KEY_RECORDS, JSON.stringify(allRecords));
+      updateJudgeUI();
+      renderClubGrid();
+      renderMatrixView();
+      renderRankingView();
+      closeConfigModal();
+      switchTab("matrix");
+      showToast("🎉 7인 심사위원 시연 데이터가 입력되었습니다! [2. 누가 어디 채점했나?] 탭을 확인해 보세요.");
+    }
+
+    function copyAppsScriptCode() {
+      const code = `const RAW_SHEET_NAME = '채점_원본데이터';
+const RANK_SHEET_NAME = '실시간_순위집계표';
+
+function ensureSheets() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let rawSheet = ss.getSheetByName(RAW_SHEET_NAME);
+  if (!rawSheet) {
+    rawSheet = ss.insertSheet(RAW_SHEET_NAME);
+    const headers = ['제출일시','고유키','심사교사명','교사구분','동아리번호','동아리명','배정장소','층수','교육가치(25)','부스운영(25)','안전질서(15)','청소복구(35)','총점(100)','심사평'];
+    rawSheet.getRange(1, 1, 1, headers.length).setValues([headers]).setBackground('#1e293b').setFontColor('#ffffff').setFontWeight('bold');
+    rawSheet.setFrozenRows(1);
+  }
+  let rankSheet = ss.getSheetByName(RANK_SHEET_NAME);
+  if (!rankSheet) rankSheet = ss.insertSheet(RANK_SHEET_NAME);
+  return { rawSheet, rankSheet };
+}
+
+function doGet() {
+  const { rawSheet } = ensureSheets();
+  const data = rawSheet.getDataRange().getValues();
+  const records = [];
+  for (let i = 1; i < data.length; i++) {
+    const r = data[i];
+    if (!r[2] || !r[5]) continue;
+    records.push({ timestamp: r[0], key: r[1], teacher: r[2], teacherRole: r[3], clubId: Number(r[4]), clubName: r[5], room: r[6], floor: r[7], s1: Number(r[8]), s2: Number(r[9]), s3: Number(r[10]), s4: Number(r[11]), total: Number(r[12]), comment: r[13] });
+  }
+  return ContentService.createTextOutput(JSON.stringify({ status: 'ok', records })).setMimeType(ContentService.MimeType.JSON);
+}
+
+function doPost(e) {
+  const lock = LockService.getScriptLock();
+  lock.tryLock(10000);
+  try {
+    const { rawSheet } = ensureSheets();
+    const item = JSON.parse(e.postData.contents);
+    const key = item.teacher + '__' + item.clubName;
+    const data = rawSheet.getDataRange().getValues();
+    let rowIdx = -1;
+    for (let i = 1; i < data.length; i++) {
+      if (String(data[i][1]) === key) { rowIdx = i + 1; break; }
+    }
+    const nowStr = Utilities.formatDate(new Date(), 'Asia/Seoul', 'yyyy-MM-dd HH:mm:ss');
+    const row = [nowStr, key, item.teacher, item.teacherRole, item.clubId, item.clubName, item.room, item.floor, item.s1, item.s2, item.s3, item.s4, item.total, item.comment || ''];
+    if (rowIdx > 0) rawSheet.getRange(rowIdx, 1, 1, row.length).setValues([row]);
+    else rawSheet.appendRow(row);
+    SpreadsheetApp.flush();
+    return doGet();
+  } finally {
+    lock.releaseLock();
+  }
+}`;
+      navigator.clipboard.writeText(code);
+      showToast("📋 구글 시트 자동 수합 코드가 복사되었습니다! Apps Script에 붙여넣으세요.");
+    }
+  </script>
+</body>
+</html>
